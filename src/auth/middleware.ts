@@ -50,9 +50,9 @@ export function createAccessMiddleware(options: AccessMiddlewareOptions) {
   const { type, redirectOnMissing = false } = options;
 
   return async (c: Context<AppEnv>, next: Next) => {
-    // Skip auth in dev mode or E2E test mode
-    if (isDevMode(c.env) || isE2ETestMode(c.env)) {
-      c.set('accessUser', { email: 'dev@localhost', name: 'Dev User' });
+    // Skip auth in dev mode, E2E test mode, or when SKIP_ACCESS_AUTH is set
+    if (isDevMode(c.env) || isE2ETestMode(c.env) || c.env.SKIP_ACCESS_AUTH === 'true') {
+      c.set('accessUser', { email: 'anonymous@local', name: 'Anonymous User' });
       return next();
     }
 

@@ -62,7 +62,8 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
   }
 
   // CF Access vars not required in dev/test mode since auth is skipped
-  if (!isTestMode) {
+  // Also skip if SKIP_ACCESS_AUTH is explicitly set to bypass Access
+  if (!isTestMode && env.SKIP_ACCESS_AUTH !== 'true') {
     if (!env.CF_ACCESS_TEAM_DOMAIN) {
       missing.push('CF_ACCESS_TEAM_DOMAIN');
     }
