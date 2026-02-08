@@ -42,6 +42,48 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
 }
 
 /**
+ * Find all Moltbot/OpenClaw related processes (including CLI commands)
+ */
+export async function findAllMoltbotProcesses(sandbox: Sandbox): Promise<Process[]> {
+  try {
+    const processes = await sandbox.listProcesses();
+    return processes.filter(
+      (proc) =>
+        proc.command.includes('start-openclaw.sh') ||
+        proc.command.includes('openclaw') ||
+        proc.command.includes('start-moltbot.sh') ||
+        proc.command.includes('moltbot') ||
+        proc.command.includes('clawdbot'),
+    );
+  } catch (e) {
+    console.log('Could not list processes:', e);
+    return [];
+  }
+}
+
+/**
+ * Kill all Moltbot/OpenClaw related processes
+ */
+export async function killAllMoltbotProcesses(sandbox: Sandbox): Promise<number> {
+  const procs = await findAllMoltbotProcesses(sandbox);
+  let killedCount = 0;
+
+  console.log(`Found ${procs.length} Moltbot/OpenClaw processes to kill`);
+
+  for (const proc of procs) {
+    try {
+      console.log(`Killing process ${proc.id} (${proc.command})`);
+      await proc.kill();
+      killedCount++;
+    } catch (e) {
+      console.log(`Failed to kill process ${proc.id}:`, e);
+    }
+  }
+
+  return killedCount;
+}
+
+/**
  * Ensure the OpenClaw gateway is running
  *
  * This will:

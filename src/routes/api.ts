@@ -4,10 +4,12 @@ import { createAccessMiddleware } from '../auth';
 import {
   ensureMoltbotGateway,
   findExistingMoltbotProcess,
+  killAllMoltbotProcesses,
   mountR2Storage,
   syncToR2,
   waitForProcess,
 } from '../gateway';
+
 import { R2_MOUNT_PATH } from '../config';
 
 // CLI commands can take 10-15 seconds to complete due to WebSocket connection overhead
@@ -275,18 +277,12 @@ adminApi.post('/gateway/restart', async (c) => {
 
   try {
     // Find and kill the existing gateway process
-    const existingProcess = await findExistingMoltbotProcess(sandbox);
+    // Kill ALL existing Moltbot processes (including zombies and CLI commands)
+    const killedCount = await killAllMoltbotProcesses(sandbox);
+    console.log(`Killed ${killedCount} existing processes`);
 
-    if (existingProcess) {
-      console.log('Killing existing gateway process:', existingProcess.id);
-      try {
-        await existingProcess.kill();
-      } catch (killErr) {
-        console.error('Error killing process:', killErr);
-      }
-      // Wait a moment for the process to die
-      await new Promise((r) => setTimeout(r, 2000));
-    }
+    // Wait a moment for processes to die and ports to free up
+    await new Promise((r) => setTimeout(r, 3000));
 
     // Start a new gateway in the background
     const bootPromise = ensureMoltbotGateway(sandbox, c.env).catch((err) => {
@@ -296,10 +292,8 @@ adminApi.post('/gateway/restart', async (c) => {
 
     return c.json({
       success: true,
-      message: existingProcess
-        ? 'Gateway process killed, new instance starting...'
-        : 'No existing process found, starting new instance...',
-      previousProcessId: existingProcess?.id,
+      message: `Killed ${killedCount} processes, starting new gateway instance...`,
+      previousProcessCount: killedCount,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
