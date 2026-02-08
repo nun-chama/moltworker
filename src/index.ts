@@ -57,9 +57,12 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
   const missing: string[] = [];
   const isTestMode = env.DEV_MODE === 'true' || env.E2E_TEST_MODE === 'true';
 
+  // MOLTBOT_GATEWAY_TOKEN is now optional (defaults to pairing mode if missing)
+  /*
   if (!env.MOLTBOT_GATEWAY_TOKEN) {
     missing.push('MOLTBOT_GATEWAY_TOKEN');
   }
+  */
 
   // CF Access vars not required in dev/test mode since auth is skipped
   // Also skip if SKIP_ACCESS_AUTH is explicitly set to bypass Access

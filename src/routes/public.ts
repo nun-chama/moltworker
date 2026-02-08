@@ -74,18 +74,25 @@ publicRoutes.all('/reset-factory-defaults', async (c) => {
   try {
     console.log('[RESET] Initiating factory reset...');
 
-    // 1. Kill all processes
+    // 1. Wipe config directories (local) - Do this FIRST to ensure config is gone even if kill fails
+    try {
+      await sandbox.startProcess('rm -rf /root/.openclaw /root/.clawdbot');
+      console.log('[RESET] Local config wiped');
+    } catch (e) {
+      console.error('[RESET] Failed to wipe local config:', e);
+    }
+
+    // 2. Wipe R2 backup (if mounted at /data/moltbot)
+    try {
+      await sandbox.startProcess('rm -rf /data/moltbot/openclaw /data/moltbot/clawdbot /data/moltbot/.last-sync /data/moltbot/openclaw.json /data/moltbot/clawdbot.json');
+      console.log('[RESET] R2 backup wiped (attempted)');
+    } catch (e) {
+      console.error('[RESET] Failed to wipe R2 backup:', e);
+    }
+
+    // 3. Kill all processes (might timeout if many processes)
     await killAllMoltbotProcesses(sandbox);
     console.log('[RESET] Processes killed');
-
-    // 2. Wipe config directories (local)
-    await sandbox.startProcess('rm -rf /root/.openclaw /root/.clawdbot');
-    console.log('[RESET] Local config wiped');
-
-    // 3. Wipe R2 backup (if mounted at /data/moltbot)
-    // We try to remove the specific backup directories to avoid unmounting issues
-    await sandbox.startProcess('rm -rf /data/moltbot/openclaw /data/moltbot/clawdbot /data/moltbot/.last-sync /data/moltbot/openclaw.json /data/moltbot/clawdbot.json');
-    console.log('[RESET] R2 backup wiped (attempted)');
 
     return c.json({
       status: 'ok',
