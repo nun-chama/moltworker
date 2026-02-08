@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types';
 import { MOLTBOT_PORT } from '../config';
-import { findExistingMoltbotProcess } from '../gateway';
+import { findExistingMoltbotProcess, killAllMoltbotProcesses } from '../gateway';
 
 /**
  * Public routes - NO Cloudflare Access authentication required
@@ -65,6 +65,39 @@ publicRoutes.get('/_admin/assets/*', async (c) => {
   const assetPath = url.pathname.replace('/_admin/assets/', '/assets/');
   const assetUrl = new URL(assetPath, url.origin);
   return c.env.ASSETS.fetch(new Request(assetUrl.toString(), c.req.raw));
+});
+
+// POST /reset-factory-defaults - DANGER: Wipe all data and restart
+// This is a temporary endpoint to fix corrupted state where config is missing but gateway is running.
+publicRoutes.all('/reset-factory-defaults', async (c) => {
+  const sandbox = c.get('sandbox');
+  try {
+    console.log('[RESET] Initiating factory reset...');
+
+    // 1. Kill all processes
+    await killAllMoltbotProcesses(sandbox);
+    console.log('[RESET] Processes killed');
+
+    // 2. Wipe config directories (local)
+    await sandbox.startProcess('rm -rf /root/.openclaw /root/.clawdbot');
+    console.log('[RESET] Local config wiped');
+
+    // 3. Wipe R2 backup (if mounted at /data/moltbot)
+    // We try to remove the specific backup directories to avoid unmounting issues
+    await sandbox.startProcess('rm -rf /data/moltbot/openclaw /data/moltbot/clawdbot /data/moltbot/.last-sync /data/moltbot/openclaw.json /data/moltbot/clawdbot.json');
+    console.log('[RESET] R2 backup wiped (attempted)');
+
+    return c.json({
+      status: 'ok',
+      message: 'Factory reset initiated. Gateway will restart and onboard freshly on next request.'
+    });
+  } catch (err) {
+    console.error('[RESET] Failed:', err);
+    return c.json({
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Unknown error'
+    }, 500);
+  }
 });
 
 export { publicRoutes };
