@@ -65,22 +65,22 @@ export async function findAllMoltbotProcesses(sandbox: Sandbox): Promise<Process
  * Kill all Moltbot/OpenClaw related processes
  */
 export async function killAllMoltbotProcesses(sandbox: Sandbox): Promise<number> {
-  const procs = await findAllMoltbotProcesses(sandbox);
-  let killedCount = 0;
+  console.log('Optimized kill: Executing pkill...');
+  try {
+    // Kill openclaw, moltbot, node processes efficiently
+    // We ignore errors because pkill returns 1 if no processes matched
+    await sandbox.startProcess('pkill -f openclaw').catch(() => { });
+    await sandbox.startProcess('pkill -f clawdbot').catch(() => { });
+    await sandbox.startProcess('pkill -f start-openclaw.sh').catch(() => { });
 
-  console.log(`Found ${procs.length} Moltbot/OpenClaw processes to kill`);
+    // Give them a moment to die
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-  for (const proc of procs) {
-    try {
-      console.log(`Killing process ${proc.id} (${proc.command})`);
-      await proc.kill();
-      killedCount++;
-    } catch (e) {
-      console.log(`Failed to kill process ${proc.id}:`, e);
-    }
+    return 1;
+  } catch (e) {
+    console.log('Failed to pkill:', e);
+    return 0;
   }
-
-  return killedCount;
 }
 
 /**
