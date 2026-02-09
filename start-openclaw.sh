@@ -181,7 +181,14 @@ config.gateway.trustedProxies = ['10.1.0.0'];
 
 if (process.env.OPENCLAW_GATEWAY_TOKEN) {
     config.gateway.auth = config.gateway.auth || {};
+    config.gateway.auth.mode = 'token';
     config.gateway.auth.token = process.env.OPENCLAW_GATEWAY_TOKEN;
+} else {
+    // Force pairing mode if no token provided
+    // This allows switching back to pairing mode by removing the secret
+    config.gateway.auth = config.gateway.auth || {};
+    config.gateway.auth.mode = 'pairing';
+    delete config.gateway.auth.token;
 }
 
 if (process.env.OPENCLAW_DEV_MODE === 'true') {
