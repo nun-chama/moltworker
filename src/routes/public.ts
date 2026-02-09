@@ -107,4 +107,35 @@ publicRoutes.all('/reset-factory-defaults', async (c) => {
   }
 });
 
+// GET /diagnose - Diagnose current state (Config, Env, Files)
+publicRoutes.get('/diagnose', async (c) => {
+  const sandbox = c.get('sandbox');
+  try {
+    // 1. Check config content
+    const configProc = await sandbox.startProcess('cat /root/.openclaw/openclaw.json');
+    const configLogs = await configProc.getLogs();
+
+    // 2. Check env vars
+    const envProc = await sandbox.startProcess('env');
+    const envLogs = await envProc.getLogs();
+
+    // 3. Check R2 mount and local config dir
+    const lsR2Proc = await sandbox.startProcess('ls -la /data/moltbot');
+    const lsR2Logs = await lsR2Proc.getLogs();
+
+    const lsLocalProc = await sandbox.startProcess('ls -la /root/.openclaw');
+    const lsLocalLogs = await lsLocalProc.getLogs();
+
+    return c.json({
+      config: configLogs.stdout,
+      env: envLogs.stdout,
+      lsR2: lsR2Logs.stdout,
+      lsLocal: lsLocalLogs.stdout,
+      envConfig: c.env.MOLTBOT_GATEWAY_TOKEN ? 'Has TOKEN env' : 'No TOKEN env'
+    });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : 'Unknown error' }, 500);
+  }
+});
+
 export { publicRoutes };
